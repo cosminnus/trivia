@@ -11,5 +11,7 @@ describe("The test environment", function() {
 });
 
 describe("Your specs...", function() {
-  // it ...
+    
+    expect( true ).toBe( winner );
+     
 });

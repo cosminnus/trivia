@@ -1,191 +1,295 @@
-exports = typeof window !== "undefined" && window !== null ? window : global;
+exports = typeof window !== 'undefined' && window !== null ? window : global;
 
 exports.Game = function() {
-  var players          = new Array();
-  var places           = new Array(6);
-  var purses           = new Array(6);
-  var inPenaltyBox     = new Array(6);
-
-  var popQuestions     = new Array();
-  var scienceQuestions = new Array();
-  var sportsQuestions  = new Array();
-  var rockQuestions    = new Array();
-
-  var currentPlayer    = 0;
-  var isGettingOutOfPenaltyBox = false;
-
-  var didPlayerWin = function(){
-    return !(purses[currentPlayer] == 6)
-  };
-
-  var currentCategory = function(){
-    if(places[currentPlayer] == 0)
-      return 'Pop';
-    if(places[currentPlayer] == 4)
-      return 'Pop';
-    if(places[currentPlayer] == 8)
-      return 'Pop';
-    if(places[currentPlayer] == 1)
-      return 'Science';
-    if(places[currentPlayer] == 5)
-      return 'Science';
-    if(places[currentPlayer] == 9)
-      return 'Science';
-    if(places[currentPlayer] == 2)
-      return 'Sports';
-    if(places[currentPlayer] == 6)
-      return 'Sports';
-    if(places[currentPlayer] == 10)
-      return 'Sports';
-    return 'Rock';
-  };
-
-  this.createRockQuestion = function(index){
-    return "Rock Question "+index;
-  };
-
-  for(var i = 0; i < 50; i++){
-    popQuestions.push("Pop Question "+i);
-    scienceQuestions.push("Science Question "+i);
-    sportsQuestions.push("Sports Question "+i);
-    rockQuestions.push(this.createRockQuestion(i));
-  };
-
-  this.isPlayable = function(howManyPlayers){
-    return howManyPlayers >= 2;
-  };
-
-  this.add = function(playerName){
-    players.push(playerName);
-    places[this.howManyPlayers() - 1] = 0;
-    purses[this.howManyPlayers() - 1] = 0;
-    inPenaltyBox[this.howManyPlayers() - 1] = false;
-
-    console.log(playerName + " was added");
-    console.log("They are player number " + players.length);
-
-    return true;
-  };
-
-  this.howManyPlayers = function(){
-    return players.length;
-  };
-
-
-  var askQuestion = function(){
-    if(currentCategory() == 'Pop')
-      console.log(popQuestions.shift());
-    if(currentCategory() == 'Science')
-      console.log(scienceQuestions.shift());
-    if(currentCategory() == 'Sports')
-      console.log(sportsQuestions.shift());
-    if(currentCategory() == 'Rock')
-      console.log(rockQuestions.shift());
-  };
-
-  this.roll = function(roll){
-    console.log(players[currentPlayer] + " is the current player");
-    console.log("They have rolled a " + roll);
-
-    if(inPenaltyBox[currentPlayer]){
-      if(roll % 2 != 0){
-        isGettingOutOfPenaltyBox = true;
-
-        console.log(players[currentPlayer] + " is getting out of the penalty box");
-        places[currentPlayer] = places[currentPlayer] + roll;
-        if(places[currentPlayer] > 11){
-          places[currentPlayer] = places[currentPlayer] - 12;
+    
+    var players            = [],     // the list with the participating players
+        currentPlayer      = null,   // current player
+        totalPlayers       = 0,      // total number of players. tunable.
+        
+        
+        questions          = [],     // the list with the questions
+        questionTypes      = [       // the types of the questions
+            'science',
+            'pop',
+            'sports',
+            'rock'
+        ],
+        totalQuestionTypes = questionTypes.length,
+    
+        gameIsWon          = false,
+    
+    // player creator
+    createPlayer = (function() {
+        
+        var playerId = 0;
+        
+        return function( playerName ) {
+        
+            var coins              = 0,                    // total amount of conins the player owns
+                name               = playerName || 'john', // the name of the player
+                id                 = ++playerId,           // player ID
+                player             = this,                 // link to this
+                hasHandicap        = false,                // weather the player has a handicap or not
+                place              = 0,                    // the place the player situates?
+                freshlyUnpenaltied = false,                // weather or not the handicap property was changed from a true to a false state
+                isWinner           = false                 // weather or not the player is the winner of the game
+            ;
+            
+            // increment the number of total players
+            totalPlayers++;
+            
+            // add the player to the players pool
+            players.push( player );
+            
+            // define player coins property
+            Object.defineProperty( player, "coins", {
+                "get": function() {
+                    return coins;
+                },
+                "set": function( value ) {
+                    coins = ~~value; // force coins to always be an integer
+                    console.log( name, " now has ", coins, " gold coins" );
+                    
+                    // This rule was in the original game in function didPlayerWin()
+                    // I don't understand what kind of rule is this, but ...
+                    if ( coins == 6 ) {
+                        gameIsWon = true;
+                        isWinner = true;
+                        console.log( name, "has won the game!" );
+                    }
+                    
+                }
+            });
+            
+            // name of the player. read-only.
+            Object.defineProperty( player, "name", {
+                "get": function() {
+                    return name;
+                }
+            } );
+            
+            // weather or not the player is the winner of the game
+            Object.defineProperty( player, "isWinner", {
+                "get": function() {
+                    return isWinner;
+                }
+            } );
+            
+            // define player id property, read-only
+            Object.defineProperty( player, "id", {
+                "get": function() {
+                    return id;
+                }
+            });
+            
+            // define the player handicap, boolean
+            Object.defineProperty( player, "handicap", {
+                "get": function() {
+                    return hasHandicap;
+                },
+                "set": function( value ) {
+                    
+                    if ( hasHandicap != !!value ) {
+                        freshlyUnpenaltied = hasHandicap;
+                        hasHandicap = !!value;
+                        console.log( name, " is ", ( hasHandicap ? "entering in" : "leaving from" ), " the penalty box" );
+                    }
+                    
+                }
+            } );
+            
+            // implement the player place, integer.
+            Object.defineProperty( player, "place", {
+                "get": function() {
+                    return place;
+                },
+                "set": function( intval ) {
+                    place = ~~intval;
+                    
+                    if ( place > 11 )
+                        place %= 12;
+                    
+                    console.log( name, "'s new place is now ", place );
+                }
+            } );
+            
+            // in a real-world game, the answer should be implemented,
+            // but in this simulation, the answer is a random number
+            player.answer = function( question ) {
+                
+                var answerValue = freshlyUnpenaltied
+                    ? true
+                    : ~~( Math.random() * 10 ) == 7;
+                
+                if ( question.validateAnswer( answerValue ) ) {
+                    console.log( name, " answered good!" );
+                    player.coins++;
+                } else {
+                    console.log( name, " answered wrong!" );
+                    // sendit' to the cage :))
+                    player.handicap = true;
+                }
+                
+            };
+            
+            //console.log( "Created player: ", name );
+            
+            return player;
+        };
+        
+    } )(),
+    
+    // question creator
+    createQuestion = ( function() {
+        
+        var questionId = 0;
+        
+        return function( questionCategory ) {
+            var instance = this,              // link to this
+                category = questionCategory,  // the question category ( e.g. "science", etc. )
+                question = '',                // the question body ( e.g.: "Does the science is awesome?" )
+                answer   = 0,                 // the question correct answer.
+                id       = ++questionId       // the question id
+            ;
+            
+            // push the question to the game questions list
+            questions.push( this );
+            
+            // question getter. read-only
+            Object.defineProperty( instance, "question", {
+                "get": function() {
+                    return question;
+                }
+            });
+            
+            // question id. read-only
+            Object.defineProperty( instance, "id", {
+                "get": function() {
+                    return id;
+                }
+            });
+            
+            // question category. read-only
+            Object.defineProperty( instance, "category", {
+                "get": function() {
+                    return category;
+                }
+            });
+            
+            // we don't want to expose the question answer to the outside
+            // world, so we're just returning a boolean, based on a player
+            // answer.
+            instance.validateAnswer = function( playerAnswer ) {
+                return playerAnswer == true;
+            };
+            
+            // Initialize ...
+            question = 'Question #' + id + ' from ' + category;
+            answer   = ~~( Math.random() * totalPlayers );
+            
+            // console.log( "Created question #", id, " from ", category );
+            
+            return instance; // or this, is the same thing.
+        };
+    } )(),
+    
+    initializeGame = function() {
+        
+        // in a real-world app, the player names should be obtained from
+        // a source, that's why they're hardcoded inside an array
+        var playerNames = [ 'Chet', 'Pat', 'Sue' ]; 
+        
+        // add players with their corresponding names
+        for ( var i=0, len = playerNames.length; i<len; i++ ) {
+            new createPlayer( playerNames[i] );
         }
+        
+        // initialize game questions
+        for ( var i=0, questionTypeIndex = 0; i < 200; i++ ) {
+            
+            new createQuestion( questionTypes[ questionTypeIndex++ ] );
+            
+            questionTypeIndex = questionTypeIndex < totalQuestionTypes
+                ? questionTypeIndex
+                : 0;
+        }
+        
+        // initialize current player
+        currentPlayer = players[0];
+    };
+    
+    this.nextRound = function( probability ) {
+        
+        console.log( currentPlayer.name, " is the next player" );
+        console.log( currentPlayer.name, " has rolled a ", probability );
+        
+        if ( currentPlayer.handicap ) {
+            
+            if ( ( probability % 2 ) != 0 ) {
 
-        console.log(players[currentPlayer] + "'s new location is " + places[currentPlayer]);
-        console.log("The category is " + currentCategory());
-        askQuestion();
-      }else{
-        console.log(players[currentPlayer] + " is not getting out of the penalty box");
-        isGettingOutOfPenaltyBox = false;
-      }
-    }else{
+                currentPlayer.handicap = false;
 
-      places[currentPlayer] = places[currentPlayer] + roll;
-      if(places[currentPlayer] > 11){
-        places[currentPlayer] = places[currentPlayer] - 12;
-      }
+                currentPlayer.place += probability;
+                
+                currentPlayer.answer(
+                    questions.shift()
+                );
+                
+            } else {
+                // the player is staying in the penalty box further
+                console.log( currentPlayer.name, " is staying in the penalty box further" );
+            }
+        } else {
+            
+            currentPlayer.place += probability;
 
-      console.log(players[currentPlayer] + "'s new location is " + places[currentPlayer]);
-      console.log("The category is " + currentCategory());
-      askQuestion();
+            currentPlayer.answer( questions.shift() );
+            
+        }
+        
+        // advance to the next player
+        currentPlayer = players[ currentPlayer.id == totalPlayers ? 0 : currentPlayer.id ];
+        
     }
-  };
-
-  this.wasCorrectlyAnswered = function(){
-    if(inPenaltyBox[currentPlayer]){
-      if(isGettingOutOfPenaltyBox){
-        console.log('Answer was correct!!!!');
-        purses[currentPlayer] += 1;
-        console.log(players[currentPlayer] + " now has " +
-                    purses[currentPlayer]  + " Gold Coins.");
-
-        var winner = didPlayerWin();
-        currentPlayer += 1;
-        if(currentPlayer == players.length)
-          currentPlayer = 0;
-
-        return winner;
-      }else{
-        currentPlayer += 1;
-        if(currentPlayer == players.length)
-          currentPlayer = 0;
-        return true;
-      }
-
-
-
-    }else{
-
-      console.log("Answer was correct!!!!");
-
-      purses[currentPlayer] += 1;
-      console.log(players[currentPlayer] + " now has " +
-                  purses[currentPlayer]  + " Gold Coins.");
-
-      var winner = didPlayerWin();
-
-      currentPlayer += 1;
-      if(currentPlayer == players.length)
-        currentPlayer = 0;
-
-      return winner;
-    }
-  };
-
-  this.wrongAnswer = function(){
-		console.log('Question was incorrectly answered');
-		console.log(players[currentPlayer] + " was sent to the penalty box");
-		inPenaltyBox[currentPlayer] = true;
-
-    currentPlayer += 1;
-    if(currentPlayer == players.length)
-      currentPlayer = 0;
-		return true;
-  };
+    
+    // weather or not we have a winner for the game
+    Object.defineProperty( this, "gameIsWon", {
+        "get": function() {
+            return gameIsWon;
+        }
+    } );
+    
+    // returns the instance of the winner if a winner
+    // exists, or FALSE otherwise
+    Object.defineProperty( this, "gameWinner", {
+        "get": function() {
+            for ( var i=0, len = players.length; i<len; i++ )
+                if ( players[i].isWinner )
+                    return players[i];
+            return false;
+        }
+    } );
+    
+    // returns true if game is still playable
+    Object.defineProperty( this, "gameIsPlayable", {
+        
+        "get": function() {
+            return !this.gameIsWon && questions.length > 0;
+        }
+        
+    } );
+    
+    initializeGame();
+    
+    return this;
 };
 
-var notAWinner = false;
+var g = new Game();
 
-var game = new Game();
+exports.winner = false;
 
-game.add('Chet');
-game.add('Pat');
-game.add('Sue');
+do { 
+    g.nextRound( ~~( Math.random() * 6 ) + 1 );
+} while ( g.gameIsPlayable );
 
-do{
-
-  game.roll(Math.floor(Math.random()*6) + 1);
-
-  if(Math.floor(Math.random()*10) == 7){
-    notAWinner = game.wrongAnswer();
-  }else{
-    notAWinner = game.wasCorrectlyAnswered();
-  }
-
-}while(notAWinner);
+winner = !!g.gameWinner;
