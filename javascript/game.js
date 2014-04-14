@@ -5,9 +5,9 @@
 
     exports.Game = function () {
         var players          = [],
-            places           = new Array(6),
-            purses           = new Array(6),
-            inPenaltyBox     = new Array(6),
+            places           = [],
+            purses           = [],
+            inPenaltyBox     = [],
             popQuestions     = [],
             scienceQuestions = [],
             sportsQuestions  = [],
